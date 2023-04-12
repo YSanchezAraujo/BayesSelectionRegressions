@@ -32,4 +32,5 @@ println(string("error between true weights and this ARD: ", rmse(true_weights, w
 plt.plot(true_weights, label = "true weights", lw = 3)
 plt.plot(res_ard.coef_, linestyle = "--", color = "black", label = "sklearn", lw = 3)
 plt.plot(w_ols[2:end], linestyle = "--", color = "grey", label = "ols", lw = 3)
-plt.plot(w_ard[2;end], linestyle = "--", color = "tab:orange", label = "this ard", lw = 3)
+plt.plot(w_ard.w[2:end], linestyle = "--", color = "tab:orange", label = "this ard", lw = 3)
+plt.legend()
