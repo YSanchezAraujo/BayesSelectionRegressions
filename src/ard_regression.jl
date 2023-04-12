@@ -22,8 +22,6 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
 
     sig2y = isnothing(sig2y) ? 1 : sig2y
 
-    gammas = ones(n_col)
-
     w = Variable(n_col)
 
     problem = minimize(
@@ -32,7 +30,7 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
 
     solve!(problem, SCS.Optimizer; silent_solver = !verbose)
 
-    gammas_prev = gammas
+    gammas_prev = ones(n_col)
 
     gammas = 1 ./ sqrt.(z) .* abs.(vec(w.value))
 
@@ -45,11 +43,6 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
     z = diag(X' * S_inv * X)
 
     for iter in 1:max_iter
-
-        if norm(gammas_prev .- gammas) < tol 
-            println(string("converged in $iter", " iterations"))
-            break 
-        end
 
         problem = minimize(
             norm(y - X*w, 2) + 2 * sig2y * sum(sqrt.(z) .* abs.(w))
@@ -67,6 +60,11 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
 
         z = diag(X' * S_inv * X)
 
+        if norm(gammas_prev .- gammas) < tol 
+            println(string("converged in $iter", " iterations"))
+            break 
+        end
+
         gammas_prev = gammas
     end
 
@@ -78,4 +76,3 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
             gamma = gammas)
 
 end
-
