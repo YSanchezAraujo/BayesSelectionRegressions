@@ -15,6 +15,7 @@ end
 X: design matrix
 y: vector of target values
 """
+
 function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = false)
     n_samp, n_col = size(X)
 
@@ -36,7 +37,7 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
 
     S = weighted_x(y, X, sig2y, gammas, n_samp)
 
-    S_inv = inv(S)
+    S_inv = pinv(S)
 
     ySy = y' * S_inv * y
 
@@ -54,7 +55,7 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
     
         S = weighted_x(y, X, sig2y, gammas, n_samp)
 
-        S_inv = inv(S)
+        S_inv = pinv(S)
 
         ySy = y' * S_inv * y
 
@@ -68,7 +69,7 @@ function fit_ard(X, y; sig2y = nothing, max_iter=100, tol = 1e-2, verbose = fals
         gammas_prev = gammas
     end
 
-    opt_S_inv = inv(weighted_x(y, X, sig2y, gammas, n_samp))
+    opt_S_inv = pinv(weighted_x(y, X, sig2y, gammas, n_samp))
 
     w_ard = diagm(gammas) * X' * opt_S_inv * y
 
