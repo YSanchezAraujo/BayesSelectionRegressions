@@ -1,4 +1,6 @@
 using LinearAlgebra, Convex, SCS
+
+
 """
 y: vector of target values
 X: design matrix
@@ -86,99 +88,66 @@ function fit_ard(X, y;  max_iter=100, tol = 1e-2, verbose = false)
 
 end
 
-function woodbury_inversion(X, sig2y, gamma, n_samp, n_col)
-    inv_gamma = 1 ./ gamma 
+sse(x, y) = sum((x .- y).^2)
 
-    S = pinv(I(n_samp) .* sig2y .+ X * (inv_gamma .* X'))
-
-    S = S * (X .* inv_gamma')
-
-    S = -((inv_gamma' .* X)' * S)
-
-    S = S .+ (I(n_col) .* inv_gamma )
-    
-    return S
-end
-
-function update_covar(X, sig2y, gammas, n_samp, n_col)
-    if n_samp > n_col
-        S = pinv((1 / sig2y) * X'X .+ diagm(gammas))
-    else
-        S = woodbury_inversion(X, sig2y, gammas, n_samp, n_col)
-    end
-
-    return S
-end
-
-function fit_ard_mackay(X, y; tol=1e-2,  max_iter=50, max_gamma=100)
+function fit_ard_mackay(X, y; tol=1e-2,  max_iter=50, max_alpha=100)
     n_samp, n_col = size(X)
 
-    gammas =  ones(n_col)
+    alphas = ones(n_col)
+
+    keep_coefs = ones(Bool, n_col)
 
     a, b, c, d = ones(4) .* 1e-4
 
     sig2y = 1.
 
-    S = update_covar(X, sig2y, gammas, n_samp, n_col)
+    mu = zeros(n_col)
 
-    mu = (1 / sig2y) * S * X' * y
+    S = pinv(1 / sig2y * X[:, keep_coefs]'X[:, keep_coefs] .+ diagm(alphas))
 
-    g = 1 .- gammas .* diag(S)
+    mu[keep_coefs] = 1 / sig2y * S * X[:, keep_coefs]' * y
 
-    gammas = (g .+ 2*a) ./ (mu.^2 .+ 2*b)
+    gammas = 1 .- alphas[keep_coefs] .* diag(S)
 
-    sig2y = (n_samp - sum(g) + 2*c) / (norm(y - X*mu, 2) + 2*d)
+    alphas[keep_coefs] = (gammas .+ 2*a) ./ (mu[keep_coefs].^2 .+ 2*b)
 
-    keep_coefs = ones(Bool, n_col)
-
-    prune_coefs = .!keep_coefs
-
-    mu_prev = ones(n_col) .* 10000
+    sig2y = (sse(y, X*mu) + 2*d) / (n_samp - sum(gammas) + 2*c)
 
     ml = fill(NaN, max_iter)
 
-    for iter in 1:max_iter
+    ml[1] = -log(det(S)) - n_samp * log(sig2y) - sum(log.(alphas[keep_coefs]))
 
-        S = update_covar(X[:, keep_coefs], sig2y, gammas[keep_coefs], n_samp, size(X[:, keep_coefs], 2))
+    for iter in 2:max_iter
 
-        mu[keep_coefs] = (1 / sig2y) * S * X[:, keep_coefs]' * y
+        S = pinv(1 / sig2y * X[:, keep_coefs]'X[:, keep_coefs] .+ diagm(alphas[keep_coefs]))
+
+        mu[keep_coefs] = 1 / sig2y * S * X[:, keep_coefs]' * y
     
-        ml[iter] = -log(det(S)) - n_samp * log(1/sig2y) - sum(log.(gammas[keep_coefs]))
+        ml[iter] = -log(det(S)) - n_samp * log(sig2y) - sum(log.(alphas[keep_coefs]))
 
-        g = 1 .- gammas[keep_coefs] .* diag(S)
+        gammas = 1 .- alphas[keep_coefs] .* diag(S)
 
-        gammas[keep_coefs] = (g .+ 2*a) ./ (mu[keep_coefs].^2 .+ 2*b)
+        alphas[keep_coefs] = (gammas .+ 2*a) ./ (mu[keep_coefs].^2 .+ 2*b)
 
-        sig2y = (n_samp - sum(g) + 2*c) / (norm(y - X*mu, 2) + 2*d)
+        sig2y = (sse(y, X[:, keep_coefs]*mu[keep_coefs]) + 2*d) / (n_samp - sum(gammas) + 2*c)
 
-        prune_coefs[gammas .>= max_gamma] .= true
+        keep_coefs[alphas .> max_alpha] .= false
 
-        keep_coefs = .!prune_coefs
+        mu[.!keep_coefs] .= 0
 
-        mu[prune_coefs] .= 0
-
-        if sum(abs.(mu .- mu_prev)) < tol
+        if abs(ml[iter] - ml[iter-1]) < tol
             println(string("converged in $iter", " iterations"))
             break
         end
 
-        mu_prev = mu
     end
-
-    S = update_covar(X, sig2y, gammas, n_samp, size(X, 2))
-
-    mu = (1 / sig2y) * S * X' * y
-
-    g = 1 .- gammas .* diag(S)
-
-    sig2y = (n_samp - sum(g) + 2*c) / (norm(y - X*mu, 2) + 2*d)
 
     return (
         sig2y = sig2y,
         w = mu, 
-        gamma = gammas,
+        alpha = alphas,
         ml = ml[.!isnan.(ml)],
-        S = S
+        C = S
     )
 
 end
