@@ -9,7 +9,7 @@ gammas: diagonal of regularization matrix
 n_samp: number of samples
 """
 function weighted_x(y, X, sig2y, gammas, n_samp)
-    return sig2y * I(n_samp) .+ X * (gammas .* X')
+    return 1 / sig2y * I(n_samp) .+ X * (gammas .* X')
 end
 
 """
@@ -19,47 +19,46 @@ y: vector of target values
 function fit_ard(X, y;  max_iter=100, tol = 1e-2, verbose = false)
     n_samp, n_col = size(X)
 
-    z = rand(n_col)
-
-    sig2y = 1.
+    z = ones(n_col)
 
     w = Variable(n_col)
 
+    sig2y = 1.
+
     problem = minimize(
-        norm(y - X*w, 2) + 2 * sig2y * sum(sqrt.(z) .* abs.(w))
+        sum(square(y - X*w)) + 2 * 1 / sig2y * sum(sqrt.(z) .* abs.(w))
     )
 
     solve!(problem, SCS.Optimizer; silent_solver = !verbose)
 
-    gammas_prev = ones(n_col)
-
     gammas = 1 ./ sqrt.(z) .* abs.(evaluate(w))
-
-    C = pinv(sig2y .* X'X .+ diagm(gammas))
 
     S = weighted_x(y, X, sig2y, gammas, n_samp)
 
     S_inv = pinv(S)
 
+    C = diagm(gammas) .- diagm(gammas) * X' * S_inv * X * diagm(gammas)
+
     z = diag(X' * S_inv * X)
 
+    gammas_prev = rand(n_col) * 10000
+
     for iter in 1:max_iter
+        sig2y = norm(y .- X*evaluate(w), 2)^2 / (n_samp - sum(1 .- gammas .* diag(C)))
 
         problem = minimize(
-            norm(y - X*w, 2) + 2 * sig2y * sum(sqrt.(z) .* abs.(w))
+            sum(square(y - X*w)) + 2 * 1 / sig2y * sum(sqrt.(z) .* abs.(w))
         )
 
         solve!(problem, SCS.Optimizer; silent_solver = !verbose)
 
         gammas = 1 ./ sqrt.(z) .* abs.(evaluate(w))
 
-        C = pinv(sig2y .* X'X .+ diagm(gammas))
-
-        sig2y = norm(y - X*evaluate(w), 2) / (n_samp - sum(1 .- gammas .* diag(C)))
-    
         S = weighted_x(y, X, sig2y, gammas, n_samp)
 
         S_inv = pinv(S)
+
+        C = diagm(gammas) .- diagm(gammas) * X' * S_inv * X * diagm(gammas)
 
         z = diag(X' * S_inv * X)
 
@@ -75,9 +74,9 @@ function fit_ard(X, y;  max_iter=100, tol = 1e-2, verbose = false)
 
     w_ard = diagm(gammas) * X' * opt_S_inv * y
 
-    C = pinv(sig2y .* X'X .+ diagm(gammas))
+    C = diagm(gammas) .- diagm(gammas) * X' * opt_S_inv * X * diagm(gammas)
 
-    sig2y = norm(y - X*w_ard, 2) / (n_samp - sum(1 .- gammas .* diag(C)))
+    sig2y = norm(y .- X*w_ard, 2)^2 / (n_samp - sum(1 .- gammas .* diag(C)))
 
     return (
         w = w_ard, 
@@ -113,19 +112,19 @@ function fit_ard_mackay(X, y; tol=1e-2,  max_iter=50, max_alpha=100)
 
     sig2y = (sse(y, X*mu) + 2*d) / (n_samp - sum(gammas) + 2*c)
 
-    ml = fill(NaN, max_iter)
+    lml = fill(NaN, max_iter)
 
-    ml[1] = -log(det(S)) - n_samp * log(sig2y) - sum(log.(alphas[keep_coefs]))
+    lml[1] = -log(det(S)) - n_samp * log(1/sig2y) - sum(log.(alphas[keep_coefs]))
 
     for iter in 2:max_iter
 
-        S = pinv(1 / sig2y * X[:, keep_coefs]'X[:, keep_coefs] .+ diagm(alphas[keep_coefs]))
+        S[keep_coefs, keep_coefs] = pinv(1 / sig2y * X[:, keep_coefs]'X[:, keep_coefs] .+ diagm(alphas[keep_coefs]))
 
-        mu[keep_coefs] = 1 / sig2y * S * X[:, keep_coefs]' * y
+        mu[keep_coefs] = 1 / sig2y * S[keep_coefs, keep_coefs] * X[:, keep_coefs]' * y
     
-        ml[iter] = -log(det(S)) - n_samp * log(sig2y) - sum(log.(alphas[keep_coefs]))
+        lml[iter] = -log(det(S[keep_coefs, keep_coefs])) - n_samp * log(1/sig2y) - sum(log.(alphas[keep_coefs]))
 
-        gammas = 1 .- alphas[keep_coefs] .* diag(S)
+        gammas = 1 .- alphas[keep_coefs] .* diag(S[keep_coefs, keep_coefs])
 
         alphas[keep_coefs] = (gammas .+ 2*a) ./ (mu[keep_coefs].^2 .+ 2*b)
 
@@ -146,7 +145,7 @@ function fit_ard_mackay(X, y; tol=1e-2,  max_iter=50, max_alpha=100)
         sig2y = sig2y,
         w = mu, 
         alpha = alphas,
-        ml = ml[.!isnan.(ml)],
+        lml = lml[.!isnan.(lml)],
         C = S
     )
 
