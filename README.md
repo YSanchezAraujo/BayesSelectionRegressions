@@ -1,5 +1,5 @@
 # ARD-Regression
-small implementation of automatic relevance determination for linear regression. Details are given at: 
+small implementation of automatic relevance determination for linear and logistic regression. Details are given at: 
 
 [Sparse Bayesian Learning and the Relevance Vector Machine](https://www.jmlr.org/papers/volume1/tipping01a/tipping01a.pdf)
 
