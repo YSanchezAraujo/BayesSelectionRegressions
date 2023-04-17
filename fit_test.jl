@@ -19,7 +19,7 @@ res_ard = sklm.ARDRegression(compute_score=true, n_iter=30).fit(X, y)
 
 xb0 = [ones(size(X, 1)) X]
 
-w_ard = fit_ard(xb0, y; sig2y=1.5, max_iter=50)
+w_ard = fit_ard(xb0, y; max_iter=50)
 
 w_ols = coef(lm(xb0, y))
 
