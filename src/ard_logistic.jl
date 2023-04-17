@@ -49,7 +49,7 @@ function newtons_method(w, X, y, alphas; tol=1e-2, max_iter=100)
 end
 
 
-function ard_laplace(y, X; rng_state = nothing, tol=1e-3, max_iter=100, max_alpha=5000)
+function ard_laplace(y, X; rng_state = nothing, tol=1e-3, max_iter=100, max_alpha=500)
     n_samp, n_col = size(X)
 
     a, b, c, d = ones(4) .* 1e-4
