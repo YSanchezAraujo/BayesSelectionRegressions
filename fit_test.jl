@@ -1,4 +1,5 @@
 include("src/ard_regression.jl");
+include("src/ard_logistic.jl");
 using PyCall, PyPlot;
 
 sklm = pyimport("sklearn.linear_model");
@@ -34,3 +35,18 @@ plt.plot(res_ard.coef_, linestyle = "--", color = "black", label = "sklearn", lw
 plt.plot(w_ols[2:end], linestyle = "--", color = "grey", label = "ols", lw = 3)
 plt.plot(w_ard.w[2:end], linestyle = "--", color = "tab:orange", label = "this ard", lw = 3)
 plt.legend()
+
+    
+# testingn classification
+X_b, y_b = skd.make_classification(
+    n_samples=1000, n_features=20, n_informative=2, n_redundant=2, random_state=42
+)
+
+
+#X_b, y_b = skd.load_iris(return_X_y=true)
+#use_rows = (y_b .== 1) .| (y_b .== 0)
+#X = X_b[use_rows, :]
+#y = y_b[use_rows]
+
+
+a=ard_laplace(y_b, X_b; max_iter=100, max_alpha=100, tol=1e-2)
