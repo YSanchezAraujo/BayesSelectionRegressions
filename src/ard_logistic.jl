@@ -5,15 +5,15 @@ import Random: MersenneTwister;
 using Distributions;
 
 
-function nll(w, X, y, alphas)
 
-    p = logistic.(X*w)
+function nll(w, X, y, alphas)
+    mu = X*w
 
     A = diagm(alphas)
 
     prior = 0.5 * w'*A*w
 
-    return -sum(y .* log.(p) .+ (1 .- y) .* log.(1 .- p)) + prior
+    return -y'mu + sum(softplus.(mu)) + prior
 end
 
 function grad_w(w, X, y, alphas)
@@ -37,7 +37,6 @@ function newtons_method(w, X, y, alphas; tol=1e-2, max_iter=100)
         w = w .- pinv(hess_w(w, X, y, alphas)) * grad_w(w, X, y, alphas)
 
         if sum(abs.(w .- w_old)) < tol 
-            println("converged")
             break
         end
 
@@ -45,7 +44,6 @@ function newtons_method(w, X, y, alphas; tol=1e-2, max_iter=100)
     end
 
     return w
-
 end
 
 
