@@ -1,8 +1,3 @@
-import numpy as np
-
-def sse(x, y):
-    return np.sum((x - y)**2)
-
 def fit_bayes_ridge(X, y, tol=1e-2, max_iter=100, pen_init=10):
     n_samp, n_col = np.shape(X)
 
@@ -10,15 +5,19 @@ def fit_bayes_ridge(X, y, tol=1e-2, max_iter=100, pen_init=10):
 
     I_n = np.eye(n_col)
 
-    w = np.linalg.lstsq(X.T @ X + I_n * pen_init, X.T @ y, rcond=None)[0]
+    XX = X.T @ X 
+
+    Xy = X.T @ y 
+
+    w = np.linalg.lstsq(XX + I_n * pen_init, Xy, rcond=None)[0]
 
     sig2y = see(y, X @ w)
 
     alpha = pen_init / sig2y
 
-    covar = np.linalg.pinv( 1 / sig2y * X.T @ X + I_n * alpha)
+    covar = np.linalg.pinv( 1 / sig2y * XX+ I_n * alpha)
 
-    mu = 1 / sig2y * covar @ X.T @ y
+    mu = 1 / sig2y * covar @ Xy
 
     gammas = 1 - alpha * np.diag(covar)
 
@@ -33,9 +32,9 @@ def fit_bayes_ridge(X, y, tol=1e-2, max_iter=100, pen_init=10):
     params = np.array([alpha, sig2y])
 
     for iter_j in range(1, max_iter):
-        covar = np.linalg.pinv( 1 / sig2y * X.T @ X + I_n * alpha)
+        covar = np.linalg.pinv( 1 / sig2y * XX + I_n * alpha)
 
-        mu = 1 / sig2y * covar @ X.T @ y
+        mu = 1 / sig2y * covar @ Xy
 
         gammas = 1 - alpha * np.diag(covar)
 
