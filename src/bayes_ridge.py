@@ -1,3 +1,8 @@
+import numpy as np
+
+def sse(x, y):
+    return np.sum((x - y)**2)
+
 def fit_bayes_ridge(X, y, tol=1e-2, max_iter=100, pen_init=10):
     n_samp, n_col = np.shape(X)
 
