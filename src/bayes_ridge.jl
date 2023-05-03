@@ -11,16 +11,20 @@ function fit_bayes_ridge(X, y; tol=1e-2,  max_iter=100)
     lml = fill(NaN, max_iter)
 
     I_n = I(n_col)
+    
+    XX = X'X 
+    
+    Xy = X'y
 
-    w = (X'X + I_n) \ X'y
+    w = (XX + I_n) \ Xy
 
     sig2y = sse(y, X*w)
 
     alpha = sig2y
 
-    S = pinv(1 / sig2y * X'X .+ I_n * alpha)
+    S = pinv(1 / sig2y * XX .+ I_n * alpha)
 
-    mu = 1 / sig2y * S * X' * y
+    mu = 1 / sig2y * S * Xy
 
     gammas = 1 .- alpha .* diag(S)
 
@@ -34,9 +38,9 @@ function fit_bayes_ridge(X, y; tol=1e-2,  max_iter=100)
 
     for iter in 2:max_iter
 
-        S = pinv(1 / sig2y * X'X .+ I_n * alpha)
+        S = pinv(1 / sig2y * XX .+ I_n * alpha)
 
-        mu = 1 / sig2y * S * X' * y
+        mu = 1 / sig2y * S * Xy
     
         gammas = 1 .- alpha .* diag(S)
 
